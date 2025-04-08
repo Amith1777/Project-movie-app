@@ -1,58 +1,83 @@
 pipeline {
     agent any
-    tools{
+
+    tools {
         jdk 'java-11'
         maven 'maven'
     }
-    stages{
-        stage('git checkout'){
-            steps{
-                git branch: 'main', url: 'https://github.com/ManojKRISHNAPPA/test-1.git'
-            }
-        }
-        stage('compile'){
-            steps{
-                sh "mvn compile"
-            }
-        }
-        stage('Build'){
-            steps{
-                sh "mvn clean install" 
-            }
-        }
-        stage('Build and Tag Docker file'){
-            steps{
-                sh "docker build -t manojkrishnappa/movie:1 ."
-            }
-        }
-        stage('Docker image scan'){
-            steps{
-                 sh "trivy image --format table -o trivy-image-report.html manojkrishnappa/movie:1"
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Amith1777/Project-movie-app.git'
             }
         }
 
-        stage('Containersation'){
-            steps{
+        stage('Compile') {
+            steps {
+                sh 'mvn compile'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn clean install'
+            }
+        }
+
+        stage('Code Scan') {
+            steps {
+                withCredentials([string(credentialsId: 'sonar-jenkins', variable: 'SONAR_AUTH_TOKEN')]) {
+                    sh '''
+                        mvn sonar:sonar \
+                        -Dsonar.login=$SONAR_AUTH_TOKEN \
+                        -Dsonar.host.url=http://13.53.234.127:9000/
+                    '''   /* sonarqube link */
+                }
+            }
+        }
+
+        stage('Build and Tag Image') {
+            steps {
+                sh 'docker build -t amith2774/movieapp:1 .' /* Docker Hub registry username with new image name */
+            }
+        }
+
+        stage('Docker Image Scan') {
+            steps {
+                sh 'trivy image --format table -o trivy-image-report.html amith2774/movieapp:1' /* Docker Hub registry username with new image name */
+            }
+        }
+
+        stage('Containerization') {
+            steps {
                 sh '''
-                    docker stop  c1
-                    docker rm c1 
-                    docker run -it -d --name c1 -p 9002:8080 manojkrishnappa/movie:1
-                '''
+                    docker stop c4 || true
+                    docker rm c4 || true
+                    docker run -it -d --name c4 -p 9005:8080 amith2774/movieapp:1   
+                '''                  /* Docker Hub registry username with new image name */
             }
         }
 
         stage('Login to Docker Hub') {
-                    steps {
-                        script {
-                            withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                                sh "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
-                            }
-                        }
-                    }
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'Jenkins-DockerHub', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                    sh '''
+                        echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+                    '''
+                }
+            }
         }
-        stage('Pushing image to repository'){
-            steps{
-                sh 'docker push manojkrishnappa/movie:1'
+
+        stage('Push Image to Repository') {
+            steps {
+                sh 'docker push amith2774/movieapp:1' /* Docker Hub registry username with new image name */
             }
         }
     }
