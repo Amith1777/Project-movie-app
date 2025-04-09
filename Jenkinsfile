@@ -33,41 +33,41 @@ pipeline {
 
         stage('Code Scan') {
             steps {
-                withCredentials([string(credentialsId: 'sonar-jenkins', variable: 'SONAR_AUTH_TOKEN')]) {
+                withCredentials([string(credentialsId: 'sonar_jenkins1', variable: 'SONAR_AUTH_TOKEN')]) {
                     sh '''
                         mvn sonar:sonar \
                         -Dsonar.login=$SONAR_AUTH_TOKEN \
-                        -Dsonar.host.url=http://13.53.234.127:9000/
-                    '''   /* sonarqube link */
+                        -Dsonar.host.url=http://16.170.143.220:9000/
+                    '''                    
                 }
             }
         }
 
         stage('Build and Tag Image') {
             steps {
-                sh 'docker build -t amith2774/movieapp:1 .' /* Docker Hub registry username with new image name */
+                sh 'docker build -t amith2774/movie:1 .' 
             }
         }
 
         stage('Docker Image Scan') {
             steps {
-                sh 'trivy image --format table -o trivy-image-report.html amith2774/movieapp:1' /* Docker Hub registry username with new image name */
+                sh 'trivy image --format table -o trivy-image-report.html amith2774/movie:1' 
             }
         }
 
         stage('Containerization') {
             steps {
                 sh '''
-                    docker stop c4 || true
-                    docker rm c4 || true
-                    docker run -it -d --name c4 -p 9005:8080 amith2774/movieapp:1   
-                '''                  /* Docker Hub registry username with new image name */
+                    docker stop c3 || true
+                    docker rm c3 || true
+                    docker run -it -d --name c3 -p 9003:8080 amith2774/movie:1   
+                '''                  
             }
         }
 
         stage('Login to Docker Hub') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'Jenkins-DockerHub', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub_jenkins', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                     sh '''
                         echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
                     '''
@@ -77,7 +77,7 @@ pipeline {
 
         stage('Push Image to Repository') {
             steps {
-                sh 'docker push amith2774/movieapp:1' /* Docker Hub registry username with new image name */
+                sh 'docker push amith2774/movie:1' 
             }
         }
     }
